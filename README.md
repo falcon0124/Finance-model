@@ -4,7 +4,7 @@ A RAG-powered app for querying public company financial filings (10-Ks/10-Qs) an
 
 ## Status
 
-Phase 1 (pipeline proof-of-concept) complete: SEC EDGAR fetch → chunk → embed (local sentence-transformers) → Chroma vector store → retrieval → Groq generation with citations.
+Phase 2 (FastAPI backend with dynamic ingestion) complete. Any ticker can be queried — if it hasn't been indexed yet, the backend fetches its latest 10-K from SEC EDGAR, chunks/embeds/stores it, registers it, then answers.
 
 ## Backend setup
 
@@ -16,19 +16,23 @@ pip install -r requirements.txt
 cp .env.example .env  # then fill in GROQ_API_KEY and SEC_EDGAR_USER_AGENT
 ```
 
-## Scripts (Phase 1)
+## Running the API
 
 ```bash
-python scripts/fetch_filing.py   # fetch latest AAPL 10-K from SEC EDGAR
-python scripts/ingest.py         # chunk, embed, and store in local Chroma
-python scripts/query.py "your question here"
+uvicorn app.main:app --reload
 ```
+
+Interactive docs at `http://127.0.0.1:8000/docs`.
+
+- `POST /query` — `{"ticker": "AAPL", "question": "..."}` → cited answer, auto-ingests if not yet indexed
+- `POST /ingest` — `{"ticker": "AAPL"}` → force (re)ingestion
+- `GET /companies` — list indexed companies
 
 ## Roadmap
 
 - [x] Phase 0 — tech decisions, repo scaffold
 - [x] Phase 1 — pipeline proof-of-concept
-- [ ] Phase 2 — FastAPI backend, dynamic ingestion, company registry
+- [x] Phase 2 — FastAPI backend, dynamic ingestion, company registry
 - [ ] Phase 3 — stock data + comparison endpoint
 - [ ] Phase 4 — frontend (Next.js + Tailwind)
 - [ ] Phase 5 — hardening + deployment

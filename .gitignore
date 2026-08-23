@@ -7,4 +7,5 @@ node_modules/
 .next/
 chroma_db/
 *.sqlite3
+*.db
 .DS_Store
