@@ -4,7 +4,7 @@ A RAG-powered app for querying public company financial filings (10-Ks/10-Qs) an
 
 ## Status
 
-Phase 2 (FastAPI backend with dynamic ingestion) complete. Any ticker can be queried — if it hasn't been indexed yet, the backend fetches its latest 10-K from SEC EDGAR, chunks/embeds/stores it, registers it, then answers.
+Phase 2 (FastAPI backend with dynamic ingestion) complete. Any ticker can be queried — if it hasn't been indexed yet, the backend fetches its latest 10-K (and 10-Q, if available) from SEC EDGAR, chunks/embeds/stores them, registers it, then answers.
 
 ## Backend setup
 

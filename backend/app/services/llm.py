@@ -5,8 +5,9 @@ from groq import Groq
 GROQ_MODEL = "openai/gpt-oss-120b"
 
 SYSTEM_PROMPT = """You are a financial research assistant. Answer the user's question \
-using ONLY the provided context chunks from the company's SEC filing. \
-Cite which chunk(s) you used, e.g. [chunk_3]. \
+using ONLY the provided context chunks from the company's SEC filings (annual 10-K and, \
+if present, the most recent quarterly 10-Q). \
+Cite which chunk(s) you used, e.g. [10k_chunk_3] or [10q_chunk_5]. \
 If the answer is not present in the context, say so explicitly — do not guess or use outside knowledge. \
 Never predict future prices or performance."""
 

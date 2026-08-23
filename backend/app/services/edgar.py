@@ -37,7 +37,7 @@ def lookup_company(ticker: str) -> tuple[str, str]:
     return cik, entry["title"]
 
 
-def get_latest_10k_url(cik: str) -> str:
+def get_latest_filing_url(cik: str, form_type: str) -> str:
     submissions_url = f"https://data.sec.gov/submissions/CIK{cik}.json"
     resp = requests.get(submissions_url, headers=HEADERS)
     resp.raise_for_status()
@@ -45,12 +45,20 @@ def get_latest_10k_url(cik: str) -> str:
 
     recent = data["filings"]["recent"]
     for i, form in enumerate(recent["form"]):
-        if form == "10-K":
+        if form == form_type:
             accession = recent["accessionNumber"][i].replace("-", "")
             primary_doc = recent["primaryDocument"][i]
             return f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accession}/{primary_doc}"
 
-    raise CompanyNotFoundError(f"No 10-K found for CIK {cik}")
+    raise CompanyNotFoundError(f"No {form_type} found for CIK {cik}")
+
+
+def get_latest_10k_url(cik: str) -> str:
+    return get_latest_filing_url(cik, "10-K")
+
+
+def get_latest_10q_url(cik: str) -> str:
+    return get_latest_filing_url(cik, "10-Q")
 
 
 def fetch_and_clean(url: str) -> str:
