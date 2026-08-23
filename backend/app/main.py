@@ -2,12 +2,20 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app import db
 from app.services import ingestion, retrieval, llm, edgar, stocks
 
 app = FastAPI(title="AI Financial Research Assistant")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 db.init_db()
 
