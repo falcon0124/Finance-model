@@ -27,12 +27,14 @@ Interactive docs at `http://127.0.0.1:8000/docs`.
 - `POST /query` — `{"ticker": "AAPL", "question": "..."}` → cited answer, auto-ingests if not yet indexed
 - `POST /ingest` — `{"ticker": "AAPL"}` → force (re)ingestion
 - `GET /companies` — list indexed companies
+- `GET /stock/{ticker}` — current price, day change %, 30-day history (yFinance, 5-min cache)
+- `POST /compare` — `{"ticker_a": "AAPL", "ticker_b": "MSFT"}` → both companies' stock data + an AI-generated comparative summary grounded in their filings
 
 ## Roadmap
 
 - [x] Phase 0 — tech decisions, repo scaffold
 - [x] Phase 1 — pipeline proof-of-concept
 - [x] Phase 2 — FastAPI backend, dynamic ingestion, company registry
-- [ ] Phase 3 — stock data + comparison endpoint
+- [x] Phase 3 — stock data + comparison endpoint
 - [ ] Phase 4 — frontend (Next.js + Tailwind)
 - [ ] Phase 5 — hardening + deployment
