@@ -52,6 +52,35 @@ export async function getStock(ticker: string): Promise<StockData> {
   return handle<StockData>(res);
 }
 
+export interface Company {
+  ticker: string;
+  name: string;
+  cik: string;
+  last_ingested_at: string;
+}
+
+export async function getCompanies(): Promise<Company[]> {
+  const res = await fetch(`${API_BASE}/companies`);
+  return handle<Company[]>(res);
+}
+
+export interface IngestSummary {
+  ticker: string;
+  name: string;
+  cik: string;
+  chunks_stored: number;
+  filing_urls: Record<string, string>;
+}
+
+export async function ingestCompany(ticker: string): Promise<IngestSummary> {
+  const res = await fetch(`${API_BASE}/ingest`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticker }),
+  });
+  return handle<IngestSummary>(res);
+}
+
 export async function compare(tickerA: string, tickerB: string): Promise<CompareResponse> {
   const res = await fetch(`${API_BASE}/compare`, {
     method: "POST",

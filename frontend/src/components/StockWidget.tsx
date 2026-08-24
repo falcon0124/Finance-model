@@ -2,7 +2,7 @@
 
 import { StockData } from "@/lib/api";
 
-function Sparkline({ history }: { history: StockData["history"] }) {
+function Sparkline({ history, color }: { history: StockData["history"]; color: string }) {
   if (history.length < 2) return null;
 
   const closes = history.map((p) => p.close);
@@ -10,8 +10,8 @@ function Sparkline({ history }: { history: StockData["history"] }) {
   const max = Math.max(...closes);
   const range = max - min || 1;
 
-  const width = 240;
-  const height = 60;
+  const width = 480;
+  const height = 140;
   const points = closes
     .map((c, i) => {
       const x = (i / (closes.length - 1)) * width;
@@ -20,36 +20,34 @@ function Sparkline({ history }: { history: StockData["history"] }) {
     })
     .join(" ");
 
-  const trendUp = closes[closes.length - 1] >= closes[0];
-
   return (
-    <svg width={width} height={height} className="overflow-visible">
-      <polyline
-        points={points}
-        fill="none"
-        stroke={trendUp ? "#22c55e" : "#ef4444"}
-        strokeWidth={2}
-      />
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
+      <polyline points={points} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
 export function StockWidget({ stock }: { stock: StockData }) {
   const isUp = stock.day_change_pct >= 0;
+  const color = isUp ? "#5EE68C" : "#FF5C5C";
 
   return (
-    <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 flex flex-col gap-3">
+    <div className="rounded-2xl border border-[#1B1F26] bg-[#14171C] p-6 flex flex-col gap-1">
       <div className="flex items-baseline justify-between">
-        <span className="font-semibold text-lg">{stock.ticker}</span>
-        <span className="text-2xl font-bold">${stock.price.toFixed(2)}</span>
+        <span style={{ fontFamily: "var(--font-display)" }} className="text-sm font-bold text-[#9AA3AF]">
+          {stock.ticker}
+        </span>
+        <span style={{ fontFamily: "var(--font-display)" }} className="text-3xl font-bold text-[#F5F7FA]">
+          ${stock.price.toFixed(2)}
+        </span>
       </div>
-      <span
-        className={`text-sm font-medium ${isUp ? "text-green-600" : "text-red-600"}`}
-      >
-        {isUp ? "▲" : "▼"} {Math.abs(stock.day_change_pct).toFixed(2)}% today
-      </span>
-      <Sparkline history={stock.history} />
-      <span className="text-xs text-neutral-500">Last 30 days</span>
+      <div className="flex items-center gap-1.5 mb-5" style={{ color }}>
+        <span className="text-sm font-bold">
+          {isUp ? "▲" : "▼"} {Math.abs(stock.day_change_pct).toFixed(2)}% today
+        </span>
+      </div>
+      <Sparkline history={stock.history} color={color} />
+      <span className="text-xs text-[#5B6472] mt-2">Last 30 days</span>
     </div>
   );
 }

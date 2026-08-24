@@ -1,121 +1,172 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { query, getStock, QueryResponse, StockData } from "@/lib/api";
-import { StockWidget } from "@/components/StockWidget";
-import { SourcesPanel } from "@/components/SourcesPanel";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  query,
+  getStock,
+  getCompanies,
+  ingestCompany,
+  Company,
+  QueryResponse,
+  StockData,
+} from "@/lib/api";
+import { AppHeader } from "@/components/Header";
+import { CompanySelect } from "@/components/CompanySelect";
+import { LoadingScreen } from "@/components/LoadingScreen";
+import { AskQuestion } from "@/components/AskQuestion";
+import { ResultsTabs } from "@/components/ResultsTabs";
+
+type Screen = "select" | "loading" | "ask" | "results";
 
 export default function Home() {
-  const [ticker, setTicker] = useState("AAPL");
+  const [screen, setScreen] = useState<Screen>("select");
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [selected, setSelected] = useState<{ ticker: string; name: string } | null>(null);
+  const [selectError, setSelectError] = useState<string | null>(null);
+
+  const [asking, setAsking] = useState(false);
+  const [askError, setAskError] = useState<string | null>(null);
   const [question, setQuestion] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<QueryResponse | null>(null);
   const [stock, setStock] = useState<StockData | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!ticker.trim() || !question.trim()) return;
+  useEffect(() => {
+    getCompanies()
+      .then(setCompanies)
+      .catch(() => setCompanies([]));
+  }, []);
 
-    setLoading(true);
-    setError(null);
-    setResult(null);
+  async function handleSelect(ticker: string) {
+    setSelectError(null);
+    const existing = companies.find((c) => c.ticker === ticker);
+
+    if (existing) {
+      setSelected({ ticker: existing.ticker, name: existing.name });
+      setScreen("ask");
+      return;
+    }
+
+    setSelected({ ticker, name: ticker });
+    setScreen("loading");
+    try {
+      const summary = await ingestCompany(ticker);
+      setSelected({ ticker: summary.ticker, name: summary.name });
+      setCompanies((prev) => [...prev, { ticker: summary.ticker, name: summary.name, cik: summary.cik, last_ingested_at: new Date().toISOString() }]);
+      setScreen("ask");
+    } catch (err) {
+      setSelectError(err instanceof Error ? err.message : "Could not find that company");
+      setScreen("select");
+    }
+  }
+
+  async function handleAsk(q: string) {
+    if (!selected) return;
+    setAsking(true);
+    setAskError(null);
+    setQuestion(q);
 
     try {
       const [queryRes, stockRes] = await Promise.allSettled([
-        query(ticker.trim().toUpperCase(), question.trim()),
-        getStock(ticker.trim().toUpperCase()),
+        query(selected.ticker, q),
+        getStock(selected.ticker),
       ]);
 
       if (queryRes.status === "fulfilled") {
         setResult(queryRes.value);
+        setScreen("results");
       } else {
-        setError(queryRes.reason.message);
+        setAskError(queryRes.reason.message);
       }
-
-      if (stockRes.status === "fulfilled") {
-        setStock(stockRes.value);
-      } else {
-        setStock(null);
-      }
+      setStock(stockRes.status === "fulfilled" ? stockRes.value : null);
     } finally {
-      setLoading(false);
+      setAsking(false);
     }
   }
 
+  function handleSwitch() {
+    setSelected(null);
+    setResult(null);
+    setStock(null);
+    setQuestion("");
+    setScreen("select");
+  }
+
   return (
-    <div className="min-h-screen max-w-3xl mx-auto px-4 py-10 flex flex-col gap-8">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">AI Financial Research Assistant</h1>
-          <p className="text-sm text-neutral-500">
-            Ask a question about any public company&apos;s latest 10-K.
-          </p>
-        </div>
-        <Link
-          href="/compare"
-          className="text-sm font-medium border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-900"
-        >
-          Compare companies →
-        </Link>
-      </header>
+    <div className="min-h-screen flex flex-col bg-[#0B0D10] relative">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[500px]"
+        style={{
+          background:
+            "radial-gradient(ellipse 900px 500px at 50% -5%, rgba(198,255,61,0.08), transparent 60%)",
+        }}
+      />
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <div className="flex gap-2">
-          <input
-            value={ticker}
-            onChange={(e) => setTicker(e.target.value)}
-            placeholder="Ticker (e.g. AAPL)"
-            className="w-32 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2 uppercase"
-          />
-          <input
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder="What was total revenue last year?"
-            className="flex-1 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={loading}
-          className="self-start rounded-lg bg-neutral-900 dark:bg-neutral-100 text-white dark:text-black px-4 py-2 text-sm font-medium disabled:opacity-50"
-        >
-          {loading ? "Thinking..." : "Ask"}
-        </button>
-      </form>
+      <div className="relative z-10 flex flex-col flex-1 w-full max-w-[1440px] mx-auto">
+        <AppHeader
+          ticker={selected?.ticker}
+          name={selected?.name}
+          onSwitch={screen !== "select" && screen !== "loading" ? handleSwitch : undefined}
+          showCompareLink={screen !== "loading"}
+        />
 
-      {error && (
-        <p className="text-sm text-red-600 border border-red-200 rounded-lg px-3 py-2">
-          {error}
-        </p>
-      )}
-
-      {result && (
-        <div className="flex flex-col gap-6">
-          {result.ingested_now && (
-            <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950 rounded-lg px-3 py-2 w-fit">
-              First time seeing {result.ticker} — fetched and indexed its latest 10-K just now.
-            </p>
+        <AnimatePresence mode="wait">
+          {screen === "select" && (
+            <motion.div
+              key="select"
+              className="flex-1 flex flex-col"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <CompanySelect companies={companies} onSelect={handleSelect} />
+              {selectError && (
+                <p className="text-center text-sm text-[#FF5C5C] pb-8">{selectError}</p>
+              )}
+            </motion.div>
           )}
 
-          <div className="flex flex-col md:flex-row gap-6">
-            <div className="flex-1">
-              <p className="text-xs uppercase tracking-wide text-neutral-500 mb-2">
-                Answer
-              </p>
-              <p className="whitespace-pre-wrap leading-relaxed">{result.answer}</p>
-              <SourcesPanel sources={result.sources} />
-            </div>
+          {screen === "loading" && selected && (
+            <motion.div
+              key="loading"
+              className="flex-1 flex flex-col"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <LoadingScreen ticker={selected.ticker} name={selected.name} />
+            </motion.div>
+          )}
 
-            {stock && (
-              <div className="w-full md:w-64">
-                <StockWidget stock={stock} />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+          {screen === "ask" && selected && (
+            <motion.div
+              key="ask"
+              className="flex-1 flex flex-col"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <AskQuestion name={selected.name} loading={asking} error={askError} onAsk={handleAsk} />
+            </motion.div>
+          )}
+
+          {screen === "results" && selected && result && (
+            <motion.div
+              key="results"
+              className="flex-1 flex flex-col"
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <ResultsTabs question={question} result={result} stock={stock} onAskAgain={handleAsk} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
